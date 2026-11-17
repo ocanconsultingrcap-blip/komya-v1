@@ -1,6 +1,11 @@
-// Recrée les 4 images PNG de public/ à partir des fichiers texte base64.
-// Usage : node scripts/decode-images.mjs   (les fichiers .b64.txt sont dans assets-base64/)
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+// Icônes PWA : déjà générées et commitées dans public/.
+// Si le dossier assets-base64/ existe, régénère les images ; sinon, rien à faire.
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+
+if (!existsSync('assets-base64')) {
+  console.log('assets-base64/ absent : icônes déjà présentes dans public/, rien à faire.');
+  process.exit(0);
+}
 const cibles = {
   'favicon': 'public/favicon.png',
   'icon-192': 'public/icons/icon-192.png',
