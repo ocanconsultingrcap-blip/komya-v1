@@ -1,0 +1,28 @@
+name: build-komya
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Reconstruire le projet KOMYA
+        run: bash scripts/reconstruct.sh
+
+      - name: Publier la branche app
+        run: |
+          git config user.name "komya-builder"
+          git config user.email "builder@users.noreply.github.com"
+          git checkout -B app
+          git add -A
+          git commit -m "KOMYA v1 : application reconstruite" || echo "Rien à committer"
+          git push --force origin app
