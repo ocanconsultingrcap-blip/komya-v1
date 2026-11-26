@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reconstruit le projet KOMYA v1.
+# Reconstruit le projet KOMYA v1. (v2 - relance déploiement Netlify)
 # Accepte : les fichiers sources en vrac (.md, .b64.txt), un zip à la racine,
 # et un fichier de corrections optionnel (KOMYA_6_fichiers_corriges.md).
 set -e
