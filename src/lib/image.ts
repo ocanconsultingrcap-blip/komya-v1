@@ -11,23 +11,6 @@ export const prettySize = (b: number) => (b >= 1048576 ? `${(b / 1048576).toFixe
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
-    const im = new Image();
-    im.onload = () => { URL.revokeObjectURL(url); resolve(im); };
-    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Cette image ne peut pas être lue. Utilise une photo JPG ou PNG.')); };
-    im.src = url;
-  });
-}
-async function encode(im: HTMLImageElement, sx: number, sy: number, sw: number, sh: number, w: number, h: number, q: number): Promise<Blob | null> {
-  const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Cette image ne peut pas être traitée sur ton appareil.');
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(im, sx, sy, sw, sh, 0, 0, w, h);
-  return new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
-}
-
-function loadImage(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Cette image ne peut pas être lue. Utilise une photo JPG ou PNG.')); };
