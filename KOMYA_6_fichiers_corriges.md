@@ -34,7 +34,7 @@ export default function PostCard({ post, userId, onDelete, canModerate = false }
     if (err) setError(frError(err)); else setReactions((data ?? []) as Reaction[]);
   }
   async function loadComments() {
-    const { data, error: err } = await supabase.from('comments').select('id,body,created_at,author_id,profiles!comments_author_id_fkey(display_name)')
+    const { data, error: err } = await supabase.from('comments').select('id,body,created_at,author_id,profiles(display_name)')
       .eq('post_id', post.id).is('deleted_at', null).order('created_at').limit(100);
     if (err) setError(frError(err)); else setComments((data ?? []) as unknown as Comment[]);
   }
@@ -195,7 +195,7 @@ export default function NetworkView({ network, userId, myRole, onBack }: { netwo
   const load = useCallback(async () => {
     const [p, m] = await Promise.all([
       supabase.from('posts').select('id,body,created_at,author_id,category,pinned,profiles!posts_author_id_fkey(display_name,avatar_url)').eq('network_id', network.id).is('deleted_at', null).order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50),
-      supabase.from('network_members').select('user_id,role,status,profiles!network_members_user_id_fkey(display_name)').eq('network_id', network.id).in('status', ['active', 'pending']),
+      supabase.from('network_members').select('user_id,role,status,profiles(display_name)').eq('network_id', network.id).in('status', ['active', 'pending']),
     ]);
     const err = p.error ?? m.error;
     if (err) { setError(frError(err)); return; }
