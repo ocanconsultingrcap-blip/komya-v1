@@ -24,21 +24,6 @@ jobs:
       - name: Construire la version HTML unique (hors ligne)
         run: |
           npm i -D vite-plugin-singlefile@latest --no-audit --no-fund
-          cat > vite.singlefile.config.mjs << 'EOF'
-          import { defineConfig } from 'vite';
-          import { viteSingleFile } from 'vite-plugin-singlefile';
-          export default defineConfig({
-            base: './',
-            plugins: [viteSingleFile()],
-            build: {
-              outDir: 'dist-single',
-              assetsInlineLimit: 100000000,
-              chunkSizeWarningLimit: 100000000,
-              cssCodeSplit: false,
-              rollupOptions: { output: { inlineDynamicImports: true } },
-            },
-          });
-          EOF
           npx vite build --config vite.singlefile.config.mjs
           cp dist-single/index.html komya-hors-ligne.html
           echo "Taille du fichier unique :"
