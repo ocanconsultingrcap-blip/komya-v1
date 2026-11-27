@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reconstruit le projet KOMYA v1. (v2 - relance déploiement Netlify)
+# Reconstruit le projet KOMYA v1. (v3 - config build HTML unique)
 # Accepte : les fichiers sources en vrac (.md, .b64.txt), un zip à la racine,
 # et un fichier de corrections optionnel (KOMYA_6_fichiers_corriges.md).
 set -e
@@ -148,6 +148,25 @@ EOJS
   node scripts/decode-images.mjs || true
   echo "prebuild OK"
 fi
+
+
+echo "== 5b/6 Configuration du build HTML unique =="
+cat > vite.singlefile.config.mjs << 'EOSF'
+import { defineConfig } from 'vite';
+import { viteSingleFile } from 'vite-plugin-singlefile';
+export default defineConfig({
+  base: './',
+  plugins: [viteSingleFile()],
+  build: {
+    outDir: 'dist-single',
+    assetsInlineLimit: 100000000,
+    chunkSizeWarningLimit: 100000000,
+    cssCodeSplit: false,
+    rollupOptions: { output: { inlineDynamicImports: true } },
+  },
+});
+EOSF
+echo "vite.singlefile.config.mjs OK"
 
 echo "== 6/6 Vérifications =="
 ERREUR=0
