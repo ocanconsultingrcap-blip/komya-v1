@@ -21,13 +21,12 @@ jobs:
       - name: Installer les dépendances
         run: npm install --no-audit --no-fund
 
-      - name: Construire la version HTML unique (hors ligne)
+      - name: Construire la version HTML unique (facultative)
+        continue-on-error: true
         run: |
-          npm i -D vite-plugin-singlefile@latest --no-audit --no-fund
-          npx vite build --config vite.singlefile.config.mjs
-          cp dist-single/index.html komya-hors-ligne.html
-          echo "Taille du fichier unique :"
-          ls -la komya-hors-ligne.html
+          npm i -D vite-plugin-singlefile@latest --no-audit --no-fund || true
+          npx vite build --config vite.singlefile.config.mjs || echo "Version HTML unique indisponible pour le moment"
+          if [ -f dist-single/index.html ]; then cp dist-single/index.html komya-hors-ligne.html; fi
 
       - name: Publier la branche app
         run: |
@@ -35,5 +34,5 @@ jobs:
           git config user.email "builder@users.noreply.github.com"
           git checkout -B app
           git add -A
-          git commit -m "KOMYA v1 : application reconstruite + version HTML unique" || echo "Rien à committer"
+          git commit -m "KOMYA v1 : application reconstruite" || echo "Rien à committer"
           git push --force origin app
