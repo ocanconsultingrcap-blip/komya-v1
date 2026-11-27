@@ -18,11 +18,37 @@ jobs:
       - name: Reconstruire le projet KOMYA
         run: bash scripts/reconstruct.sh
 
+      - name: Installer les dépendances
+        run: npm install --no-audit --no-fund
+
+      - name: Construire la version HTML unique (hors ligne)
+        run: |
+          npm i -D vite-plugin-singlefile@latest --no-audit --no-fund
+          cat > vite.singlefile.config.mjs << 'EOF'
+          import { defineConfig } from 'vite';
+          import { viteSingleFile } from 'vite-plugin-singlefile';
+          export default defineConfig({
+            base: './',
+            plugins: [viteSingleFile()],
+            build: {
+              outDir: 'dist-single',
+              assetsInlineLimit: 100000000,
+              chunkSizeWarningLimit: 100000000,
+              cssCodeSplit: false,
+              rollupOptions: { output: { inlineDynamicImports: true } },
+            },
+          });
+          EOF
+          npx vite build --config vite.singlefile.config.mjs
+          cp dist-single/index.html komya-hors-ligne.html
+          echo "Taille du fichier unique :"
+          ls -la komya-hors-ligne.html
+
       - name: Publier la branche app
         run: |
           git config user.name "komya-builder"
           git config user.email "builder@users.noreply.github.com"
           git checkout -B app
           git add -A
-          git commit -m "KOMYA v1 : application reconstruite" || echo "Rien à committer"
+          git commit -m "KOMYA v1 : application reconstruite + version HTML unique" || echo "Rien à committer"
           git push --force origin app
