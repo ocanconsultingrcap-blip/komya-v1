@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Reconstruit le projet KOMYA v1. (v3 - config build HTML unique)
-# Accepte : les fichiers sources en vrac (.md, .b64.txt), un zip à la racine,
-# et un fichier de corrections optionnel (KOMYA_6_fichiers_corriges.md).
+# Reconstruit le projet KOMYA v1. (v4 - extraction robuste : fonctionne avec le zip seul + corrections)
+# Accepte : un zip à la racine, les fichiers sources .md (facultatifs), les icônes .b64.txt,
+# et le fichier de corrections KOMYA_6_fichiers_corriges.md (facultatif mais prioritaire).
 set -e
 cd "$(dirname "$0")/.." 2>/dev/null || cd "$(dirname "$0")"
 
@@ -28,11 +28,16 @@ fi
 MD1="KOMYA_etape_K_1_application.md"
 MD2="KOMYA_etape_K_2_supabase_et_docs.md"
 MD3="KOMYA_6_fichiers_corriges.md"
-SRCS="$MD1 $MD2"
-[ -f "$MD3" ] && SRCS="$SRCS $MD3" && echo "Corrections détectées : $MD3"
+SRCS=""
+for f in "$MD1" "$MD2" "$MD3"; do
+  if [ -f "$f" ]; then
+    SRCS="$SRCS $f"
+    [ "$f" = "$MD3" ] && echo "Corrections détectées : $f"
+  fi
+done
 
 echo "== 1/6 Extraction des fichiers texte =="
-if [ -f "$MD1" ] && [ -f "$MD2" ]; then
+if [ -n "$(echo $SRCS)" ]; then
   awk '
     /^===== FICHIER : .+ =====$/ {
       path = $0
@@ -45,6 +50,7 @@ if [ -f "$MD1" ] && [ -f "$MD2" ]; then
   ' $SRCS | sort -u | while IFS= read -r d; do mkdir -p "$d"; done
 
   # Un processus awk par fichier source : le dernier extrait écrase les précédents.
+  # L'ordre (MD1, MD2, MD3) garantit que les corrections gagnent toujours.
   for src in $SRCS; do
     awk '
       /^===== FICHIER : .+ =====$/ {
@@ -70,16 +76,20 @@ if [ -f "$MD1" ] && [ -f "$MD2" ]; then
   done
   echo "Extraction OK"
 else
-  echo "Fichiers .md absents : étape ignorée (projet déjà extrait ?)"
+  echo "Aucun fichier .md : étape ignorée (projet fourni par le zip)."
 fi
 
 echo "== 1b/6 Corrections des requêtes profils (indices FK) =="
 if [ -f src/components/Feed.tsx ]; then
-  sed -i "s|category,profiles(|category,profiles!posts_author_id_fkey(|g" src/components/Feed.tsx src/components/NetworkView.tsx
-  sed -i "s|expires_at,profiles(|expires_at,profiles!resources_created_by_fkey(|g" src/components/Resources.tsx src/components/ResourceDetail.tsx
-  sed -i "s|created_at,profiles(|created_at,profiles!resource_reviews_author_id_fkey(|g" src/components/ResourceDetail.tsx
-  sed -i "s|created_by),profiles(|created_by),profiles!resource_reviews_author_id_fkey(|g" src/components/ProviderSpace.tsx
-  sed -i "s|created_by,profiles(|created_by,profiles!challenges_created_by_fkey(|g" src/components/Challenges.tsx
+  for f in src/components/Feed.tsx src/components/NetworkView.tsx; do
+    [ -f "$f" ] && sed -i "s|category,profiles(|category,profiles!posts_author_id_fkey(|g" "$f"
+  done
+  for f in src/components/Resources.tsx src/components/ResourceDetail.tsx; do
+    [ -f "$f" ] && sed -i "s|expires_at,profiles(|expires_at,profiles!resources_created_by_fkey(|g" "$f"
+  done
+  [ -f src/components/ResourceDetail.tsx ] && sed -i "s|created_at,profiles(|created_at,profiles!resource_reviews_author_id_fkey(|g" src/components/ResourceDetail.tsx
+  [ -f src/components/ProviderSpace.tsx ] && sed -i "s|created_by),profiles(|created_by),profiles!resource_reviews_author_id_fkey(|g" src/components/ProviderSpace.tsx
+  [ -f src/components/Challenges.tsx ] && sed -i "s|created_by,profiles(|created_by,profiles!challenges_created_by_fkey(|g" src/components/Challenges.tsx
   echo "Corrections FK OK"
 else
   echo "src/components/Feed.tsx absent : corrections ignorées"
@@ -112,12 +122,14 @@ else
 fi
 
 echo "== 4/6 Remplacement des imports de logos =="
-if [ -f src/App.tsx ]; then
+if [ -f src/App.tsx ] && grep -q "logo-full.png" src/App.tsx; then
   sed -i "s|import logoFull from './logo-full.png';|import { logoFull } from './logos';|" src/App.tsx
-  sed -i "s|import logoIcon from '../logo-icon.png';|import { logoIcon } from '../logos';|" src/components/AuthScreen.tsx
-  rm -f src/logo-full.png src/logo-icon.png
-  echo "Imports OK"
 fi
+if [ -f src/components/AuthScreen.tsx ] && grep -q "logo-icon.png" src/components/AuthScreen.tsx; then
+  sed -i "s|import logoIcon from '../logo-icon.png';|import { logoIcon } from '../logos';|" src/components/AuthScreen.tsx
+fi
+rm -f src/logo-full.png src/logo-icon.png
+echo "Imports OK"
 
 echo "== 5/6 Script prebuild =="
 if [ -f package.json ]; then
@@ -149,7 +161,6 @@ EOJS
   echo "prebuild OK"
 fi
 
-
 echo "== 5b/6 Configuration du build HTML unique =="
 cat > vite.singlefile.config.mjs << 'EOSF'
 import { defineConfig } from 'vite';
@@ -175,5 +186,6 @@ for f in package.json index.html vite.config.ts src/main.tsx src/App.tsx src/log
 done
 grep -q "from './logos'" src/App.tsx 2>/dev/null && echo "OK  import App.tsx" || { echo "PROBLEME import App.tsx"; ERREUR=1; }
 [ -f src/components/Feed.tsx ] && grep -q "posts_author_id_fkey" src/components/Feed.tsx && echo "OK  corrections FK" || { echo "PROBLEME corrections FK (Feed.tsx)"; ERREUR=1; }
+if [ -f src/components/PostCard.tsx ] && grep -q "komya_toggle_pin" src/components/PostCard.tsx; then echo "OK  v1.1 (épinglage)"; else echo "PROBLEME v1.1 (PostCard)"; ERREUR=1; fi
 if [ "$ERREUR" = "1" ]; then echo "ECHEC : des fichiers manquent."; exit 1; fi
 echo "Reconstruction terminée avec succès."
